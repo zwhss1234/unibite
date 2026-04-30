@@ -1,0 +1,18 @@
+# Claude Code
+.claude/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# PHP / IDE
+.idea/
+.vscode/
+*.log
+
+# XAMPP / local config (ο κάθε χρήστης βάζει το δικό του port)
+# Σημείωση: το config.php περιέχεται σκόπιμα στο repo
+# αλλά ο κάθε χρήστης αλλάζει τη γραμμή $port αν χρειαστεί
