@@ -35,7 +35,7 @@
 └─────────────────────────────────────────────┘
 ```
 
-**Πώς τρέχει:** Ο χρήστης ανοίγει `http://localhost/unibite/`. Ο Apache σερβίρει το `index.html`. Κάθε ενέργεια (εγγραφή, παραγγελία κλπ.) στέλνει αίτημα στα PHP αρχεία του `backend/`. Αυτά τρέχουν στον Apache, επικοινωνούν με τη MariaDB, και επιστρέφουν JSON.
+**Πώς τρέχει:** Ο χρήστης ανοίγει `http://localhost/unibite/frontend/`. Ο Apache σερβίρει το `index.html`. Κάθε ενέργεια (εγγραφή, παραγγελία κλπ.) στέλνει αίτημα στα PHP αρχεία του `backend/`. Αυτά τρέχουν στον Apache, επικοινωνούν με τη MariaDB, και επιστρέφουν JSON.
 
 ---
 
@@ -555,22 +555,24 @@ index.html
 
 ```
 Unibite/
-├── index.html          ← SPA: login + main app σε ένα αρχείο
-├── style.css           ← CSS variables, components, modals, toasts
-├── script.js           ← Όλη η λογική frontend (~795 γραμμές)
+├── frontend/
+│   ├── index.html      ← SPA: login + main app σε ένα αρχείο
+│   ├── style.css       ← CSS variables, components, modals, toasts
+│   └── script.js       ← Όλη η λογική frontend (~795 γραμμές)
+├── backend/
+│   ├── config.php      ← DB connection + helper functions (κεντρικό)
+│   ├── auth.php        ← register / login / logout / me
+│   ├── ads.php         ← feed / my-ads / create / update / delete
+│   ├── requests.php    ← create / approve / reject / rate / history
+│   ├── stats.php       ← leaderboard / stats / user-stats
+│   ├── unibite.sql     ← Schema + indexes + views + procedures + test data
+│   └── seed_data.sql   ← 8 φρέσκες αγγελίες + reset credits (τρέχει το refresh.bat)
 ├── refresh.bat         ← Διπλό κλικ: φρέσκα δεδομένα στη βάση
+├── erdiagram.png       ← ER διάγραμμα βάσης δεδομένων
 ├── README.md           ← Τεκμηρίωση project (GitHub)
 ├── ΟΔΗΓΙΕΣ.md          ← Εκτέλεση σε αυτόν τον υπολογιστή
 ├── ΕΓΚΑΤΑΣΤΑΣΗ.md      ← Εγκατάσταση από μηδέν (για τρίτο)
-├── ΑΝΑΛΥΣΗ_PROJECT.md  ← Αυτό το αρχείο
-└── backend/
-    ├── config.php      ← DB connection + helper functions (κεντρικό)
-    ├── auth.php        ← register / login / logout / me
-    ├── ads.php         ← feed / my-ads / create / update / delete
-    ├── requests.php    ← create / approve / reject / rate / history
-    ├── stats.php       ← leaderboard / stats / user-stats
-    ├── unibite.sql     ← Schema + indexes + views + procedures + test data
-    └── seed_data.sql   ← 8 φρέσκες αγγελίες + reset credits (τρέχει το refresh.bat)
+└── ΑΝΑΛΥΣΗ_PROJECT.md  ← Αυτό το αρχείο
 ```
 
 ---

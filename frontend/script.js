@@ -4,7 +4,7 @@
 // ========================================
 
 // --- API Configuration ---
-const API_BASE = 'backend';
+const API_BASE = '../backend';
 
 // --- State ---
 let currentUser = null;
