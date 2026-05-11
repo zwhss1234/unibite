@@ -558,6 +558,8 @@ Unibite/
 ├── index.html          ← SPA: login + main app σε ένα αρχείο
 ├── style.css           ← CSS variables, components, modals, toasts
 ├── script.js           ← Όλη η λογική frontend (~795 γραμμές)
+├── refresh.bat         ← Διπλό κλικ: φρέσκα δεδομένα στη βάση
+├── README.md           ← Τεκμηρίωση project (GitHub)
 ├── ΟΔΗΓΙΕΣ.md          ← Εκτέλεση σε αυτόν τον υπολογιστή
 ├── ΕΓΚΑΤΑΣΤΑΣΗ.md      ← Εγκατάσταση από μηδέν (για τρίτο)
 ├── ΑΝΑΛΥΣΗ_PROJECT.md  ← Αυτό το αρχείο
@@ -567,5 +569,28 @@ Unibite/
     ├── ads.php         ← feed / my-ads / create / update / delete
     ├── requests.php    ← create / approve / reject / rate / history
     ├── stats.php       ← leaderboard / stats / user-stats
-    └── unibite.sql     ← Schema + indexes + views + procedures + test data
+    ├── unibite.sql     ← Schema + indexes + views + procedures + test data
+    └── seed_data.sql   ← 8 φρέσκες αγγελίες + reset credits (τρέχει το refresh.bat)
+```
+
+---
+
+## 13. Εργαλεία Ανάπτυξης
+
+### `refresh.bat` — Γρήγορη Επαναφορά Δεδομένων
+
+Το feed εμφανίζει μόνο αγγελίες < 48 ωρών. Για demo ή testing, αρκεί διπλό κλικ στο `refresh.bat`:
+
+1. Ελέγχει αν η MySQL τρέχει στη θύρα 3307
+2. Τρέχει το `backend/seed_data.sql` με σωστό UTF-8 encoding
+3. Αποτέλεσμα: 8 φρέσκες αγγελίες + credits επαναφορά test χρηστών
+
+### `backend/seed_data.sql` — Τι κάνει
+
+```sql
+DELETE FROM ads WHERE id > 5;        -- καθαρισμός παλιών test αγγελιών
+UPDATE ads SET created_at = NOW();   -- φρεσκάρισμα υπαρχόντων
+INSERT INTO ads (...) VALUES ...     -- 8 νέες αγγελίες με NOW() timestamps
+UPDATE users SET credits = 10 WHERE email IN ('katerina@uni.gr', 'nikos@uni.gr');
+UPDATE users SET credits = 5  WHERE email IN ('marios@uni.gr', ...);
 ```
