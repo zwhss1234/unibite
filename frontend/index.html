@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBite - Φοιτητικό Φαγητό</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- LOGIN / REGISTER PAGE -->
+    <div id="login-page" class="login-page">
+        <div class="login-container">
+            <div class="login-header">
+                <span class="logo-icon">🍎</span>
+                <h1>UniBite</h1>
+                <p class="tagline">Φοιτητικό Φαγητό, Με Αγάπη</p>
+            </div>
+
+            <div class="login-description">
+                <h2>Καλωσόρισες στο UniBite!</h2>
+                <p>Η πλατφόρμα ανταλλαγής φαγητού για φοιτητές. 
+                   Μοιράσου το φαγητό σου ή βρες νόστιμα γεύματα κοντά σου.</p>
+                
+                <div class="features">
+                    <div class="feature">
+                        <span class="feature-icon">🍳</span>
+                        <span>Μάγειρες φοιτητές</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🪙</span>
+                        <span>Credits system</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">♻️</span>
+                        <span>Μειώνουμε τη σπατάλη</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-form-container">
+                <div class="form-toggle">
+                    <button class="toggle-btn active" data-form="register">Εγγραφή</button>
+                    <button class="toggle-btn" data-form="login">Σύνδεση</button>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="register-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" placeholder="Επίλεξε username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email</label>
+                        <input type="email" id="reg-email" placeholder="Το email σου" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-role">Θέλω να είμαι:</label>
+                        <select id="reg-role" required>
+                            <option value="consumer">🍽️ Καταναλωτής</option>
+                            <option value="cook">🍳 Μάγειρας</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        📝 Εγγραφή (5 Credits δώρο!)
+                    </button>
+                    <p class="form-note">Οι νέοι χρήστες παίρνουν <strong>5 δωρεάν Credits</strong></p>
+                </form>
+
+                <!-- Login Form -->
+                <form id="login-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" placeholder="Το email σου" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        🔑 Σύνδεση
+                    </button>
+                </form>
+
+                <div id="login-message" class="login-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP (Hidden until login) -->
+    <div id="main-app" class="main-app hidden">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🍎</span>
+                    <h1>UniBite</h1>
+                </div>
+                <div class="user-info">
+                    <span class="credits-badge">
+                        <span class="credits-icon">🪙</span>
+                        <span id="user-credits">5</span> Credits
+                    </span>
+                    <button class="profile-avatar-btn" id="profile-nav-btn" title="Προφίλ">
+                        <span id="header-avatar-initials">?</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="tab active" data-tab="feed">📢 Feed</button>
+            <button class="tab" data-tab="my-ads">🍳 Αγγελίες</button>
+            <button class="tab" data-tab="requests">📋 Αιτήματα</button>
+            <button class="tab" data-tab="leaderboard">🏆 Top</button>
+            <button class="tab" data-tab="profile" id="profile-tab-btn">👤 Προφίλ</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- FEED SECTION -->
+            <section id="feed-section" class="tab-content active">
+                <div class="section-header">
+                    <h2>Διαθέσιμα Φαγητά</h2>
+                    <span class="filter-badge">Ενεργές (48ω)</span>
+                </div>
+                
+                <div class="ads-grid" id="ads-container">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+            </section>
+
+        <!-- MY ADS SECTION -->
+        <section id="my-ads-section" class="tab-content">
+            <div class="section-header">
+                <h2>Οι Αγγελίες μου</h2>
+                <button class="btn btn-success" id="new-ad-btn">+ Νέα Αγγελία</button>
+            </div>
+            
+            <div class="my-ads-list">
+                <div class="empty-state">
+                    <span class="empty-icon">🍳</span>
+                    <p>Δεν έχεις δημοσιεύσει ακόμα φαγητό</p>
+                    <button class="btn btn-primary" id="create-ad-btn">Δημιουργία Αγγελίας</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- REQUESTS SECTION -->
+        <section id="requests-section" class="tab-content">
+            <div class="section-header">
+                <h2 id="requests-section-title">Αιτήματα</h2>
+            </div>
+            <div class="requests-list"></div>
+        </section>
+
+        <!-- PROFILE SECTION -->
+        <section id="profile-section" class="tab-content">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <span id="profile-initials">?</span>
+                </div>
+                <h2 id="profile-username">-</h2>
+                <span class="profile-role-badge" id="profile-role">-</span>
+            </div>
+
+            <div class="profile-info-grid">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">Email</span>
+                    <span class="profile-info-value" id="profile-email">-</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">Credits</span>
+                    <span class="profile-info-value profile-credits-value">
+                        <span id="profile-credits">-</span> 🪙
+                    </span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">Μέλος από</span>
+                    <span class="profile-info-value" id="profile-since">-</span>
+                </div>
+            </div>
+
+            <div class="profile-history">
+                <h3 class="profile-section-title">Ιστορικό Παραγγελιών</h3>
+                <div id="history-list" class="history-list">
+                    <div class="empty-state">
+                        <span class="empty-icon">📋</span>
+                        <p>Δεν υπάρχει ιστορικό ακόμα</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-danger btn-full profile-logout-btn" id="logout-btn">
+                🚪 Αποσύνδεση
+            </button>
+        </section>
+
+        <!-- LEADERBOARD SECTION -->
+        <section id="leaderboard-section" class="tab-content">
+            <div class="section-header">
+                <h2>🏆 Top Donor</h2>
+            </div>
+            
+            <div class="leaderboard"></div>
+        </section>
+
+    </main>
+
+    <!-- Order Confirmation Modal -->
+    <div class="modal" id="order-modal">
+        <div class="modal-content order-modal-content">
+            <span class="modal-close" id="order-modal-close">&times;</span>
+            <div class="order-modal-header">
+                <span id="order-modal-emoji" class="order-modal-emoji">🍽️</span>
+                <h2 id="order-modal-title"></h2>
+                <p id="order-modal-desc" class="order-modal-desc"></p>
+            </div>
+
+            <div class="order-quantity-row">
+                <span class="order-qty-label">Μερίδες</span>
+                <div class="quantity-controls">
+                    <button class="qty-btn" id="qty-minus">−</button>
+                    <span id="qty-value">1</span>
+                    <button class="qty-btn" id="qty-plus">+</button>
+                </div>
+            </div>
+            <p id="qty-max-hint" class="qty-max-hint"></p>
+
+            <div class="order-cost-row">
+                <span>Συνολικό κόστος</span>
+                <span id="order-total-cost" class="order-total-cost">1 🪙</span>
+            </div>
+
+            <div class="order-modal-actions">
+                <button class="btn btn-secondary" id="order-cancel-btn">Ακύρωση</button>
+                <button class="btn btn-primary" id="order-confirm-btn">✅ Παραγγελία</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for New Ad -->
+    <div class="modal" id="new-ad-modal">
+        <div class="modal-content">
+            <span class="modal-close" id="modal-close">&times;</span>
+            <h2>Νέα Αγγελία</h2>
+            <form class="ad-form" id="ad-form">
+                <div class="form-group">
+                    <label for="title">Τίτλος</label>
+                    <input type="text" id="title" placeholder="π.χ. Σπιτικό Παστίτσιο" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Περιγραφή</label>
+                    <textarea id="description" placeholder="Περιέγραψε το φαγητό σου..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="portions">Μερίδες</label>
+                        <input type="number" id="portions" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="credits">Κόστος (Credits)</label>
+                        <input type="number" id="credits" min="1" value="1" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="allergens">Αλλεργιογόνα</label>
+                    <input type="text" id="allergens" placeholder="π.χ. Γλουτένη, Λακτόζη">
+                </div>
+                <div class="form-group">
+                    <label for="location">Τοποθεσία</label>
+                    <input type="text" id="location" placeholder="π.χ. Εστία Κτίριο Β" required>
+                </div>
+                <div class="form-group">
+                    <label for="pickup-time">Ώρα Παραλαβής</label>
+                    <input type="datetime-local" id="pickup-time" required>
+                </div>
+                <button type="submit" class="btn btn-success btn-full">Δημοσίευση</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
