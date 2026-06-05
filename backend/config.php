@@ -1,13 +1,14 @@
 <?php
 /**
- * UniBite - Database Configuration
+ * UniBite - Database Configuration (Online)
+ * Αλλαξε τα παρακάτω με τα στοιχεία της online βάσης σου
  */
 
-$host     = 'localhost';
-$port     = 3307;   // αλλαγή σε 3307 αν υπάρχει conflict με MySQL 8.x
-$dbname   = 'unibite_db';
-$username = 'root';
-$password = '';
+$host     = 'your-db-host.example.com';   // π.χ. sql.freedb.tech ή το hostname του provider
+$port     = 3306;
+$dbname   = 'your_database_name';
+$username = 'your_db_username';
+$password = 'your_db_password';
 
 try {
     $pdo = new PDO(
