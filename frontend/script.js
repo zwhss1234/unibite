@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdForm();
     setupLogout();
     setupProfileNavBtn();
+    setupAvatarUpload();
 });
 
 // ============================================================
@@ -133,6 +134,7 @@ function showMainApp() {
 
     const initials = getInitials(currentUser.username);
     document.getElementById('header-avatar-initials').textContent = initials;
+    updateAvatarDisplay(currentUser.avatar_path);
 
     loadAds();
     loadRequests();
@@ -500,6 +502,7 @@ function loadProfile() {
     document.getElementById('profile-username').textContent  = currentUser.username;
     document.getElementById('profile-email').textContent     = currentUser.email;
     document.getElementById('profile-credits').textContent   = currentUser.credits;
+    updateAvatarDisplay(currentUser.avatar_path);
 
     const roleLabel = { cook: '🍳 Μάγειρας', consumer: '🍽️ Καταναλωτής', admin: '⚙️ Admin' };
     document.getElementById('profile-role').textContent = roleLabel[currentUser.role] || currentUser.role;
@@ -900,6 +903,57 @@ function foodEmoji(title) {
     if (t.includes('σπανακό'))                             return '🥬';
     if (t.includes('γεμιστ'))                              return '🍅';
     return '🍽️';
+}
+
+// ============================================================
+// AVATAR UPLOAD
+// ============================================================
+
+function setupAvatarUpload() {
+    const input = document.getElementById('avatar-file-input');
+    if (!input) return;
+    input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        await ensureSession();
+        const fd = new FormData();
+        fd.append('avatar', file);
+        try {
+            const res  = await fetch(`${API}/auth.php?action=upload-avatar`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok) {
+                currentUser.avatar_path = data.avatar_path;
+                localStorage.setItem('unibite_user', JSON.stringify(currentUser));
+                updateAvatarDisplay(data.avatar_path);
+                showToast('✅ Φωτογραφία προφίλ ενημερώθηκε!', 'success');
+            } else {
+                showToast(data.error || 'Σφάλμα ανεβάσματος', 'error');
+            }
+        } catch {
+            showToast('❌ Σφάλμα σύνδεσης', 'error');
+        }
+        input.value = '';
+    });
+}
+
+function updateAvatarDisplay(avatarPath) {
+    const headerImg       = document.getElementById('header-avatar-img');
+    const headerInitials  = document.getElementById('header-avatar-initials');
+    const profileImg      = document.getElementById('profile-avatar-img');
+    const profileInitials = document.getElementById('profile-initials');
+
+    if (avatarPath) {
+        const src = `../${avatarPath}`;
+        if (headerImg)       { headerImg.src = src; headerImg.style.display = 'block'; }
+        if (headerInitials)  headerInitials.style.display = 'none';
+        if (profileImg)      { profileImg.src = src; profileImg.style.display = 'block'; }
+        if (profileInitials) profileInitials.style.display = 'none';
+    } else {
+        if (headerImg)       headerImg.style.display = 'none';
+        if (headerInitials)  headerInitials.style.display = '';
+        if (profileImg)      profileImg.style.display = 'none';
+        if (profileInitials) profileInitials.style.display = '';
+    }
 }
 
 // ============================================================

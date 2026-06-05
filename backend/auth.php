@@ -22,10 +22,11 @@ switch ($method) {
 function handlePost() {
     $action = $_GET['action'] ?? '';
     switch ($action) {
-        case 'register': registerUser(); break;
-        case 'login':    loginUser();    break;
-        case 'logout':   logoutUser();   break;
-        default:         jsonResponse(['error' => 'Άγνωστη ενέργεια'], 400);
+        case 'register':       registerUser();   break;
+        case 'login':          loginUser();      break;
+        case 'logout':         logoutUser();     break;
+        case 'upload-avatar':  requireAuth(); uploadAvatar(); break;
+        default:               jsonResponse(['error' => 'Άγνωστη ενέργεια'], 400);
     }
 }
 
@@ -96,7 +97,7 @@ function loginUser() {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT id, username, email, role, credits, created_at FROM users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, username, email, role, credits, avatar_path, created_at FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
@@ -128,7 +129,7 @@ function getCurrentUser() {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT id, username, email, role, credits, created_at FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, username, email, role, credits, avatar_path, created_at FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $user = $stmt->fetch();
         if (!$user) {
@@ -139,4 +140,55 @@ function getCurrentUser() {
     } catch (PDOException $e) {
         jsonResponse(['error' => 'Σφάλμα βάσης δεδομένων'], 500);
     }
+}
+
+function uploadAvatar() {
+    global $pdo;
+
+    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+        jsonResponse(['error' => 'Δεν βρέθηκε αρχείο'], 400);
+    }
+
+    $allowed_mime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime  = finfo_file($finfo, $_FILES['avatar']['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($mime, $allowed_mime)) {
+        jsonResponse(['error' => 'Επιτρέπονται μόνο εικόνες (jpg, png, gif, webp)'], 400);
+    }
+
+    if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
+        jsonResponse(['error' => 'Μέγιστο μέγεθος: 2MB'], 400);
+    }
+
+    $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'avatars' . DIRECTORY_SEPARATOR;
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    // Διαγραφή παλιού avatar αν υπάρχει
+    $stmt = $pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $old = $stmt->fetch();
+    if (!empty($old['avatar_path'])) {
+        $oldFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $old['avatar_path']);
+        if (file_exists($oldFile)) {
+            unlink($oldFile);
+        }
+    }
+
+    $ext      = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
+    $filename = 'avatar_' . $_SESSION['user_id'] . '_' . uniqid() . '.' . $ext;
+
+    if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $uploadDir . $filename)) {
+        jsonResponse(['error' => 'Αποτυχία αποθήκευσης αρχείου'], 500);
+    }
+
+    $avatar_path = 'uploads/avatars/' . $filename;
+
+    $pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?")
+        ->execute([$avatar_path, $_SESSION['user_id']]);
+
+    jsonResponse(['message' => 'Φωτογραφία προφίλ ενημερώθηκε!', 'avatar_path' => $avatar_path]);
 }

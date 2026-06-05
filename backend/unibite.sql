@@ -12,12 +12,13 @@ USE unibite_db;
 -- ============================================================
 
 CREATE TABLE users (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    username   VARCHAR(50)  NOT NULL,
-    email      VARCHAR(100) NOT NULL UNIQUE,
-    role       ENUM('cook','consumer','admin') NOT NULL,
-    credits    INT DEFAULT 5,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    username    VARCHAR(50)  NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    role        ENUM('cook','consumer','admin') NOT NULL,
+    credits     INT DEFAULT 5,
+    avatar_path VARCHAR(255) DEFAULT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE ads (
