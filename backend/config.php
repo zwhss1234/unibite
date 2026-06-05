@@ -4,7 +4,7 @@
  */
 
 $host     = 'localhost';
-$port     = 3306;   // αλλαγή σε 3307 αν υπάρχει conflict με MySQL 8.x
+$port     = 3307;   // αλλαγή σε 3307 αν υπάρχει conflict με MySQL 8.x
 $dbname   = 'unibite_db';
 $username = 'root';
 $password = '';
