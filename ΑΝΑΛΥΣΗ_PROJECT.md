@@ -39,6 +39,7 @@ MariaDB (unibite_db)
 | email | VARCHAR(100) UNIQUE | Χρησιμοποιείται για σύνδεση (χωρίς password) |
 | role | ENUM | `cook` / `consumer` / `admin` |
 | credits | INT DEFAULT 5 | Εικονικό νόμισμα — ξεκινά από 5 |
+| avatar_path | VARCHAR(255) NULL | Σχετική διαδρομή εικόνας προφίλ π.χ. `uploads/avatars/avatar_1_xxx.jpg` |
 | created_at | TIMESTAMP | Ημερομηνία εγγραφής |
 
 #### `ads`
@@ -49,6 +50,7 @@ MariaDB (unibite_db)
 | title | VARCHAR(100) | Τίτλος φαγητού |
 | credit_costs | INT | Κόστος ανά μερίδα σε credits |
 | description | TEXT | Προαιρετική περιγραφή |
+| image_path | VARCHAR(255) NULL | Σχετική διαδρομή εικόνας π.χ. `uploads/foto_xxx.jpg` |
 | total_portions | INT | Συνολικές μερίδες |
 | available_portions | INT | Διαθέσιμες αυτή τη στιγμή |
 | allergens | TEXT | Αλλεργιογόνα (ελεύθερο κείμενο) |
@@ -111,8 +113,9 @@ idx_requests_status   -- leaderboard / history queries
 | Method | action | Λειτουργία |
 |---|---|---|
 | POST | `register` | Έλεγχος duplicate email/username, INSERT με 5 credits |
-| POST | `login` | SELECT by email, δημιουργία `$_SESSION`, επιστροφή user object |
+| POST | `login` | SELECT by email, δημιουργία `$_SESSION`, επιστροφή user object (+ avatar_path) |
 | POST | `logout` | `session_destroy()` |
+| POST | `upload-avatar` | Ανέβασμα φωτογραφίας προφίλ (multipart/form-data, max 2MB) |
 | GET  | `me` | Επιστρέφει fresh user data από DB (ανανεώνει credits στο session) |
 
 **Σημείωση ασφαλείας:** Η σύνδεση γίνεται μόνο με email, χωρίς password — απλοποιημένο για ακαδημαϊκό project.
@@ -124,7 +127,7 @@ idx_requests_status   -- leaderboard / history queries
 | GET | `feed` | — | SELECT από ads JOIN users, WHERE created_at >= NOW()-48H |
 | GET | `my-ads` | ✓ | SELECT WHERE cook_id = session user |
 | GET | `view` | — | SELECT by id |
-| POST | `create` | ✓ | INSERT νέα αγγελία (available = total) |
+| POST | `create` | ✓ | INSERT νέα αγγελία — **multipart/form-data** (υποστηρίζει εικόνα) |
 | PUT | — | ✓ | UPDATE πεδία αγγελίας (έλεγχος ιδιοκτησίας) |
 | DELETE | — | ✓ | DELETE αγγελία (CASCADE διαγράφει και τα requests) |
 
@@ -161,9 +164,10 @@ initApp()
 ├── setupTabs()          — εναλλαγή sections
 ├── setupNewAdModal()    — modal για νέα αγγελία
 ├── setupOrderModal()    — modal παραγγελίας με quantity controls
-├── setupAdForm()        — submit νέας αγγελίας
+├── setupAdForm()        — submit νέας αγγελίας (με image preview)
 ├── setupLogout()        — αποσύνδεση
-└── setupProfileNavBtn() — avatar button → profile tab
+├── setupProfileNavBtn() — avatar button → profile tab
+└── setupAvatarUpload()  — upload φωτογραφίας προφίλ
 ```
 
 ### State
@@ -201,7 +205,27 @@ showMainApp()
 - Disable του + button όταν φτάσει το max available
 - Στο submit: `POST /requests.php?action=create` → ενημέρωση credits display
 
-**New Ad Modal** — form με όλα τα πεδία αγγελίας, submit → `POST /ads.php?action=create`
+**New Ad Modal** — form με όλα τα πεδία αγγελίας + επιλογή εικόνας, submit → `POST /ads.php?action=create` (FormData)
+
+### File Uploads
+
+Υπάρχουν δύο τύποι upload:
+
+| Τύπος | Endpoint | Φάκελος | Validation |
+|---|---|---|---|
+| Εικόνα αγγελίας | `POST /ads.php?action=create` | `uploads/` | image/*, max 5MB |
+| Avatar χρήστη | `POST /auth.php?action=upload-avatar` | `uploads/avatars/` | image/*, max 2MB |
+
+**Κοινή λογική PHP:**
+1. Έλεγχος `$_FILES[...]['error']`
+2. Επαλήθευση MIME type με `finfo` (όχι extension — αποτρέπει πλαστά MIME)
+3. Έλεγχος μεγέθους αρχείου
+4. `move_uploaded_file()` → φάκελος uploads (δημιουργείται αυτόματα με `mkdir(..., true)`)
+5. Αποθήκευση σχετικής διαδρομής στη DB (π.χ. `uploads/foto_abc123.jpg`)
+
+**Frontend εμφάνιση:** Η διαδρομή από τη DB είναι σχετική από τη ρίζα του project, οπότε το frontend τη διαβάζει ως `../${path}` (ένα επίπεδο πάνω από το `frontend/`).
+
+**Avatar στο UI:** Μετά το upload, η `updateAvatarDisplay(path)` αλλάζει την εικόνα τόσο στο header button όσο και στο profile card. Αν δεν υπάρχει avatar, εμφανίζονται τα initials του username.
 
 ### XSS Protection
 
@@ -290,12 +314,14 @@ function escHtml(str) {
 
 | Αρχείο | Γραμμές | Ρόλος |
 |---|---|---|
-| `frontend/index.html` | ~285 | Όλο το HTML markup (login + app) |
-| `frontend/style.css` | ~600 | Design system, components, modals, toasts |
-| `frontend/script.js` | ~420 | Όλη η frontend λογική |
+| `frontend/index.html` | ~290 | Όλο το HTML markup (login + app) |
+| `frontend/style.css` | ~830 | Design system, components, modals, toasts, avatar styles |
+| `frontend/script.js` | ~960 | Όλη η frontend λογική + avatar upload |
 | `backend/config.php` | ~45 | DB connection, helpers |
-| `backend/auth.php` | ~110 | register / login / logout / me |
-| `backend/ads.php` | ~170 | CRUD αγγελιών |
+| `backend/auth.php` | ~195 | register / login / logout / me / upload-avatar |
+| `backend/ads.php` | ~170 | CRUD αγγελιών + image upload |
 | `backend/requests.php` | ~230 | Παραγγελίες + transactions |
 | `backend/stats.php` | ~80 | Leaderboard + στατιστικά |
-| `backend/unibite.sql` | ~175 | Schema + procedures + seed data |
+| `backend/unibite.sql` | ~190 | Schema + procedures + seed data |
+| `uploads/` | — | Εικόνες αγγελιών (δημιουργείται αυτόματα) |
+| `uploads/avatars/` | — | Φωτογραφίες προφίλ (δημιουργείται αυτόματα) |
