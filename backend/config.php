@@ -4,7 +4,7 @@
  */
 
 $host     = 'localhost';
-$port     = 3306; // αλλαξε σε 3307 αν τρεχει σε αλλη θυρα
+$port     = 3307;
 $dbname   = 'unibite_db';
 $username = 'root';
 $password = '';

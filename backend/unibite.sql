@@ -3,7 +3,8 @@
 -- Φοιτητικό Σύστημα Ανταλλαγής Φαγητού
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS unibite_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+DROP DATABASE IF EXISTS unibite_db;
+CREATE DATABASE unibite_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE unibite_db;
 
 -- ============================================================
