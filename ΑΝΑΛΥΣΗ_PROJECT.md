@@ -1,0 +1,301 @@
+# Τεχνική Ανάλυση — UniBite
+
+## Σύντομη Περιγραφή
+
+Το **UniBite** είναι μια **Single Page Application (SPA)** που επιτρέπει σε φοιτητές να μοιράζονται σπιτικό φαγητό μέσω ενός συστήματος εικονικών credits. Οι μάγειρες δημοσιεύουν αγγελίες και οι καταναλωτές παραγγέλνουν πληρώνοντας με credits.
+
+**Stack:** PHP 8 · MariaDB · Vanilla JavaScript · HTML5 · CSS3  
+**Server:** Apache (XAMPP) · χωρίς framework σε backend ή frontend
+
+---
+
+## 1. Αρχιτεκτονική
+
+```
+Browser (SPA)
+    │
+    │  HTTP (JSON)
+    ▼
+Apache / PHP Backend
+    │
+    │  PDO
+    ▼
+MariaDB (unibite_db)
+```
+
+Όλο το UI βρίσκεται σε **ένα αρχείο** (`index.html`). Η JavaScript αλλάζει ποιο section είναι ορατό χωρίς να φορτώνει νέες σελίδες. Το backend είναι 5 ξεχωριστά PHP αρχεία, το καθένα ως ανεξάρτητο REST endpoint.
+
+---
+
+## 2. Βάση Δεδομένων
+
+### Πίνακες
+
+#### `users`
+| Πεδίο | Τύπος | Περιγραφή |
+|---|---|---|
+| id | INT PK | Auto increment |
+| username | VARCHAR(50) | Μοναδικό όνομα χρήστη |
+| email | VARCHAR(100) UNIQUE | Χρησιμοποιείται για σύνδεση (χωρίς password) |
+| role | ENUM | `cook` / `consumer` / `admin` |
+| credits | INT DEFAULT 5 | Εικονικό νόμισμα — ξεκινά από 5 |
+| created_at | TIMESTAMP | Ημερομηνία εγγραφής |
+
+#### `ads`
+| Πεδίο | Τύπος | Περιγραφή |
+|---|---|---|
+| id | INT PK | Auto increment |
+| cook_id | INT FK → users.id | Ποιος μάγειρας δημοσίευσε |
+| title | VARCHAR(100) | Τίτλος φαγητού |
+| credit_costs | INT | Κόστος ανά μερίδα σε credits |
+| description | TEXT | Προαιρετική περιγραφή |
+| total_portions | INT | Συνολικές μερίδες |
+| available_portions | INT | Διαθέσιμες αυτή τη στιγμή |
+| allergens | TEXT | Αλλεργιογόνα (ελεύθερο κείμενο) |
+| pickup_location | VARCHAR(255) | Τοποθεσία παραλαβής |
+| pickup_time | VARCHAR(100) | Ώρα παραλαβής |
+| created_at | TIMESTAMP | Χρησιμοποιείται για το 48ω φίλτρο |
+
+#### `requests`
+| Πεδίο | Τύπος | Περιγραφή |
+|---|---|---|
+| id | INT PK | Auto increment |
+| ad_id | INT FK → ads.id | Ποια αγγελία αφορά |
+| consumer_id | INT FK → users.id | Ποιος παρήγγειλε |
+| quantity | INT | Πόσες μερίδες |
+| status | ENUM | `pending` / `approved` / `rejected` / `picked_up` / `no_show` |
+| rating | INT (1-5) | Βαθμολογία — NULL μέχρι picked_up |
+| received_at | TIMESTAMP | Πότε παραλήφθηκε |
+| created_at | TIMESTAMP | Πότε έγινε η παραγγελία |
+
+### Views
+
+**`active_ads`** — αγγελίες των τελευταίων 48 ωρών με το username του μάγειρα και κατάσταση Active/Inactive.
+
+**`leaderboard`** — μάγειρες ταξινομημένοι κατά αριθμό παραγγελιών που ολοκλήρωσαν (`picked_up`).
+
+### Stored Procedures
+
+**`create_request(ad_id, consumer_id, quantity)`**  
+Εκτελεί σε transaction: αφαιρεί credits από καταναλωτή, μειώνει available_portions, δημιουργεί request.
+
+**`rate_and_pay(request_id, rating)`**  
+Εκτελεί σε transaction: υπολογίζει reward (με ή χωρίς bonus), πληρώνει μάγειρα, ενημερώνει status σε `picked_up`.
+
+**`handle_no_show(consumer_id, ad_id)`**  
+Εκτελεί σε transaction: αφαιρεί 1 credit ποινή, status → `no_show`, επιστρέφει μερίδα στην αγγελία.
+
+### Indexes
+```sql
+idx_ads_created_at    -- γρήγορο feed query (WHERE created_at >= NOW() - 48H)
+idx_ads_cook_id       -- my-ads query
+idx_requests_ad_id    -- JOIN requests ↔ ads
+idx_requests_consumer -- my-requests query
+idx_requests_status   -- leaderboard / history queries
+```
+
+---
+
+## 3. Backend — PHP API
+
+Κάθε αρχείο είναι ανεξάρτητο endpoint. Η δρομολόγηση γίνεται με `$_GET['action']` και `$_SERVER['REQUEST_METHOD']`.
+
+### `config.php`
+- Δημιουργεί `$pdo` (PDO connection με `ERRMODE_EXCEPTION`)
+- Καλεί `session_start()`
+- Ορίζει `jsonResponse($data, $code)` — helper για JSON output
+- Ορίζει `requireAuth()` — επιστρέφει 401 αν δεν υπάρχει session
+
+### `auth.php`
+
+| Method | action | Λειτουργία |
+|---|---|---|
+| POST | `register` | Έλεγχος duplicate email/username, INSERT με 5 credits |
+| POST | `login` | SELECT by email, δημιουργία `$_SESSION`, επιστροφή user object |
+| POST | `logout` | `session_destroy()` |
+| GET  | `me` | Επιστρέφει fresh user data από DB (ανανεώνει credits στο session) |
+
+**Σημείωση ασφαλείας:** Η σύνδεση γίνεται μόνο με email, χωρίς password — απλοποιημένο για ακαδημαϊκό project.
+
+### `ads.php`
+
+| Method | action | Auth | Λειτουργία |
+|---|---|---|---|
+| GET | `feed` | — | SELECT από ads JOIN users, WHERE created_at >= NOW()-48H |
+| GET | `my-ads` | ✓ | SELECT WHERE cook_id = session user |
+| GET | `view` | — | SELECT by id |
+| POST | `create` | ✓ | INSERT νέα αγγελία (available = total) |
+| PUT | — | ✓ | UPDATE πεδία αγγελίας (έλεγχος ιδιοκτησίας) |
+| DELETE | — | ✓ | DELETE αγγελία (CASCADE διαγράφει και τα requests) |
+
+### `requests.php`
+
+| Method | action | Auth | Λειτουργία |
+|---|---|---|---|
+| GET | `my-requests` | ✓ | Παραγγελίες του consumer |
+| GET | `incoming` | ✓ | Παραγγελίες που δέχτηκε ο cook |
+| GET | `history` | ✓ | Ολοκληρωμένες του consumer |
+| GET | `cook-history` | ✓ | Ολοκληρωμένες του cook |
+| POST | `create` | ✓ | Transaction: αφαίρεση credits + μερίδων + INSERT request |
+| PUT | `approve` | ✓ | status `pending` → `approved` |
+| PUT | `reject` | ✓ | Transaction: επιστροφή credits + μερίδων + status `rejected` |
+| PUT | `rate` | ✓ | Transaction: πληρωμή μάγειρα + status `picked_up` |
+
+### `stats.php`
+
+| Method | action | Auth | Λειτουργία |
+|---|---|---|---|
+| GET | `leaderboard` | — | Top 10 μάγειρες κατά picked_up count |
+| GET | `stats` | — | Γενικά στατιστικά (γεύματα/αγγελίες/χρήστες) |
+| GET | `user-stats` | ✓ | Στατιστικά συγκεκριμένου χρήστη |
+
+---
+
+## 4. Frontend — Vanilla JavaScript
+
+### Δομή
+
+```
+initApp()
+├── setupAuthForms()     — register/login forms + toggle
+├── setupTabs()          — εναλλαγή sections
+├── setupNewAdModal()    — modal για νέα αγγελία
+├── setupOrderModal()    — modal παραγγελίας με quantity controls
+├── setupAdForm()        — submit νέας αγγελίας
+├── setupLogout()        — αποσύνδεση
+└── setupProfileNavBtn() — avatar button → profile tab
+```
+
+### State
+
+```javascript
+let currentUser = null;   // αποθηκεύεται και στο localStorage
+let adsCache    = {};     // adId → ad object — για γρήγορο access στο order modal
+```
+
+Το `currentUser` αποθηκεύεται στο `localStorage` ώστε να επιβιώνει το page refresh χωρίς νέο login.
+
+### Κύκλος δεδομένων
+
+```
+showMainApp()
+├── loadAds()         → GET /ads.php?action=feed        → renderAds()
+├── loadRequests()    → GET /requests.php?action=...    → renderCookRequests() ή renderConsumerRequests()
+└── loadLeaderboard() → GET /stats.php?action=leaderboard → renderLeaderboard()
+```
+
+Κάθε action (παραγγελία, έγκριση, βαθμολογία) καλεί `loadAds()` + `loadRequests()` μετά για να ανανεωθεί το UI.
+
+### `ensureSession()`
+
+Πριν από κάθε authenticated request, καλείται `ensureSession()`:
+- Ελέγχει `GET /auth.php?action=me`
+- Αν πάρει 401 (session έληξε), κάνει re-login με το αποθηκευμένο email
+- Έτσι ο χρήστης δεν αποσυνδέεται αυτόματα αν ο Apache κάνει restart
+
+### Modals
+
+**Order Modal** — εμφανίζεται με `openOrderModal(adId)`:
+- Διαβάζει τα δεδομένα από το `adsCache` (χωρίς νέο API call)
+- Live υπολογισμός κόστους καθώς αλλάζει quantity
+- Disable του + button όταν φτάσει το max available
+- Στο submit: `POST /requests.php?action=create` → ενημέρωση credits display
+
+**New Ad Modal** — form με όλα τα πεδία αγγελίας, submit → `POST /ads.php?action=create`
+
+### XSS Protection
+
+Όλο το δυναμικό HTML περνάει από `escHtml()`:
+```javascript
+function escHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(str)));
+    return d.innerHTML;
+}
+```
+
+---
+
+## 5. Σύστημα Credits
+
+| Ενέργεια | Αλλαγή Credits |
+|---|---|
+| Εγγραφή | **+5** (νέος χρήστης) |
+| Παραγγελία (qty μερίδες) | **−(credit_costs × qty)** |
+| Απόρριψη από μάγειρα | **+(credit_costs × qty)** επιστροφή |
+| Βαθμολογία ≤ 3 ⭐ → Μάγειρας | **+(credit_costs × qty)** |
+| Βαθμολογία > 3 ⭐ → Μάγειρας | **+((credit_costs + 1) × qty)** bonus |
+| No-show ποινή | **−1** |
+
+**Παράδειγμα:** Φαγητό 2 credits/μερίδα, 3 μερίδες, rating 5⭐:
+- Καταναλωτής πληρώνει: **−6 credits**
+- Μάγειρας παίρνει: **(2+1) × 3 = +9 credits**
+
+Κάθε συναλλαγή γίνεται μέσα σε **database transaction** (BEGIN → COMMIT / ROLLBACK) ώστε να μην χαθούν credits αν κοπεί η σύνδεση στη μέση.
+
+---
+
+## 6. Κύκλος Παραγγελίας
+
+```
+[Καταναλωτής] Παραγγελία
+        │
+        ▼
+   status: pending
+   credits αφαιρούνται αμέσως
+   available_portions μειώνεται
+        │
+        ▼
+[Μάγειρας] Αποδοχή ή Άρνηση
+     ┌────┴────┐
+     ▼         ▼
+  approved   rejected
+     │      credits + μερίδες
+     │      επιστρέφουν
+     ▼
+[Καταναλωτής] Βαθμολογία 1-5⭐
+        │
+        ▼
+   status: picked_up
+   Μάγειρας πληρώνεται
+   (+ bonus αν rating > 3)
+```
+
+---
+
+## 7. CSS — Design System
+
+Βασίζεται σε **CSS custom properties** (variables):
+
+```css
+--primary:       #07662f   /* σκούρο πράσινο — brand color */
+--primary-dark:  #054a22
+--primary-light: #098f40
+--secondary:     #f5a623   /* πορτοκαλί — pending state */
+--danger:        #e74c3c   /* κόκκινο — rejected / delete */
+--success:       #27ae60   /* πράσινο — approved / completed */
+```
+
+**Component classes:**
+- `.food-card` — κάρτα αγγελίας με hover animation
+- `.request-card.{pending|approved|completed|rejected}` — χρωματιστό border-left
+- `.toast` — floating notification (bottom center, auto-dismiss 3.5s)
+- `.modal` → `.modal.active` — overlay με flex centering
+
+**Responsive:** grid 1→2→3 columns για τα food cards (`@media 600px / 768px`).
+
+---
+
+## 8. Αρχεία — Σύνοψη
+
+| Αρχείο | Γραμμές | Ρόλος |
+|---|---|---|
+| `frontend/index.html` | ~285 | Όλο το HTML markup (login + app) |
+| `frontend/style.css` | ~600 | Design system, components, modals, toasts |
+| `frontend/script.js` | ~420 | Όλη η frontend λογική |
+| `backend/config.php` | ~45 | DB connection, helpers |
+| `backend/auth.php` | ~110 | register / login / logout / me |
+| `backend/ads.php` | ~170 | CRUD αγγελιών |
+| `backend/requests.php` | ~230 | Παραγγελίες + transactions |
+| `backend/stats.php` | ~80 | Leaderboard + στατιστικά |
+| `backend/unibite.sql` | ~175 | Schema + procedures + seed data |
