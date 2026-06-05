@@ -116,35 +116,66 @@ function getAdById() {
     }
 }
 
-// Δημιουργία νέας αγγελίας
+// Δημιουργία νέας αγγελίας (δέχεται multipart/form-data λόγω upload εικόνας)
 function createAd() {
     global $pdo;
-    $input = json_decode(file_get_contents('php://input'), true);
 
-    $title           = trim($input['title']           ?? '');
-    $total_portions  = intval($input['total_portions'] ?? 0);
-    $pickup_location = trim($input['pickup_location'] ?? '');
-    $pickup_time     = $input['pickup_time'] ?? '';
+    $title           = trim($_POST['title']           ?? '');
+    $total_portions  = intval($_POST['total_portions'] ?? 0);
+    $pickup_location = trim($_POST['pickup_location'] ?? '');
+    $pickup_time     = $_POST['pickup_time'] ?? '';
 
     if (empty($title) || $total_portions <= 0 || empty($pickup_location) || empty($pickup_time)) {
         jsonResponse(['error' => 'Υποχρεωτικά πεδία: title, total_portions, pickup_location, pickup_time'], 400);
     }
 
-    $credit_costs = intval($input['credit_costs'] ?? 1);
-    $description  = trim($input['description']   ?? '');
-    $allergens    = trim($input['allergens']      ?? '');
+    $credit_costs = intval($_POST['credit_costs'] ?? 1);
+    $description  = trim($_POST['description']   ?? '');
+    $allergens    = trim($_POST['allergens']      ?? '');
+
+    // Upload εικόνας (προαιρετικά)
+    $image_path = null;
+    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $allowed_mime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $_FILES['image']['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed_mime)) {
+            jsonResponse(['error' => 'Επιτρέπονται μόνο εικόνες (jpg, png, gif, webp)'], 400);
+        }
+
+        if ($_FILES['image']['size'] > 5 * 1024 * 1024) {
+            jsonResponse(['error' => 'Μέγιστο μέγεθος εικόνας: 5MB'], 400);
+        }
+
+        $ext      = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $filename = 'food_' . uniqid() . '.' . $ext;
+        $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        if (!move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . $filename)) {
+            jsonResponse(['error' => 'Αποτυχία αποθήκευσης εικόνας'], 500);
+        }
+
+        $image_path = 'uploads/' . $filename;
+    }
 
     try {
         $stmt = $pdo->prepare("
             INSERT INTO ads (cook_id, title, credit_costs, description, allergens,
-                             total_portions, available_portions, pickup_location, pickup_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             total_portions, available_portions, pickup_location, pickup_time, image_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $_SESSION['user_id'],
             $title, $credit_costs, $description, $allergens,
             $total_portions, $total_portions,
             $pickup_location, $pickup_time,
+            $image_path,
         ]);
         $adId = $pdo->lastInsertId();
         jsonResponse(['message' => 'Αγγελία δημιουργήθηκε!', 'ad' => ['id' => $adId, 'title' => $title]], 201);

@@ -244,6 +244,15 @@
                 </div>
             </div>
             <div class="form-group">
+                <label for="ad-image">Φωτογραφία (προαιρετικά)</label>
+                <label class="file-upload-label" for="ad-image">
+                    <span class="file-upload-icon">📷</span>
+                    <span class="file-upload-text" id="file-upload-text">Επίλεξε φωτογραφία...</span>
+                </label>
+                <input type="file" id="ad-image" accept="image/*" class="file-input-hidden">
+                <div class="image-preview" id="image-preview"></div>
+            </div>
+            <div class="form-group">
                 <label for="ad-allergens">Αλλεργιογόνα</label>
                 <input type="text" id="ad-allergens" placeholder="π.χ. Γλουτένη, Λακτόζη">
             </div>

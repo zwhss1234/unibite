@@ -210,7 +210,10 @@ function renderAds(ads) {
 
     container.innerHTML = ads.map(ad => `
         <article class="food-card" data-id="${ad.id}">
-            <div class="food-image">${foodEmoji(ad.title)}</div>
+            ${ad.image_path
+                ? `<img class="food-img" src="../${escHtml(ad.image_path)}" alt="${escHtml(ad.title)}">`
+                : `<div class="food-image">${foodEmoji(ad.title)}</div>`
+            }
             <div class="food-content">
                 <span class="food-status ${ad.current_state === 'Active' ? 'active' : 'inactive'}">
                     ${ad.current_state === 'Active' ? 'Διαθέσιμο' : 'Εξαντλήθηκε'}
@@ -590,30 +593,56 @@ function openNewAdModal() {
 }
 
 function setupAdForm() {
+    // Image preview
+    const fileInput   = document.getElementById('ad-image');
+    const previewBox  = document.getElementById('image-preview');
+    const uploadText  = document.getElementById('file-upload-text');
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) {
+            previewBox.classList.remove('has-image');
+            previewBox.innerHTML = '';
+            uploadText.textContent = 'Επίλεξε φωτογραφία...';
+            return;
+        }
+        uploadText.textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewBox.innerHTML  = `<img src="${e.target.result}" alt="preview">`;
+            previewBox.classList.add('has-image');
+        };
+        reader.readAsDataURL(file);
+    });
+
     document.getElementById('ad-form').addEventListener('submit', async e => {
         e.preventDefault();
         await ensureSession();
 
-        const payload = {
-            title:           document.getElementById('ad-title').value.trim(),
-            description:     document.getElementById('ad-description').value.trim(),
-            credit_costs:    parseInt(document.getElementById('ad-credits').value),
-            total_portions:  parseInt(document.getElementById('ad-portions').value),
-            allergens:       document.getElementById('ad-allergens').value.trim(),
-            pickup_location: document.getElementById('ad-location').value.trim(),
-            pickup_time:     document.getElementById('ad-pickup-time').value,
-        };
+        const formData = new FormData();
+        formData.append('title',           document.getElementById('ad-title').value.trim());
+        formData.append('description',     document.getElementById('ad-description').value.trim());
+        formData.append('credit_costs',    document.getElementById('ad-credits').value);
+        formData.append('total_portions',  document.getElementById('ad-portions').value);
+        formData.append('allergens',       document.getElementById('ad-allergens').value.trim());
+        formData.append('pickup_location', document.getElementById('ad-location').value.trim());
+        formData.append('pickup_time',     document.getElementById('ad-pickup-time').value);
+        if (fileInput.files[0]) {
+            formData.append('image', fileInput.files[0]);
+        }
 
         try {
             const res  = await fetch(`${API}/ads.php?action=create`, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(payload),
+                method: 'POST',
+                body:   formData,   // χωρίς Content-Type — browser το θέτει αυτόματα με boundary
             });
             const data = await res.json();
             if (res.ok) {
                 document.getElementById('new-ad-modal').classList.remove('active');
                 document.getElementById('ad-form').reset();
+                previewBox.classList.remove('has-image');
+                previewBox.innerHTML   = '';
+                uploadText.textContent = 'Επίλεξε φωτογραφία...';
                 showToast('✅ Αγγελία δημοσιεύτηκε!', 'success');
                 loadAds();
                 loadMyAds();
