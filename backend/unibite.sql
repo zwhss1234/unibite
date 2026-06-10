@@ -33,6 +33,8 @@ CREATE TABLE ads (
     allergens          TEXT,
     pickup_location    VARCHAR(255) NOT NULL,
     pickup_time        VARCHAR(100) NOT NULL,
+    latitude           DECIMAL(9,6) DEFAULT NULL,
+    longitude          DECIMAL(9,6) DEFAULT NULL,
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cook_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -168,15 +170,16 @@ INSERT INTO users (username, email, role, credits) VALUES
 ('giorgos_cook', 'giorgos@uni.gr',  'cook',     5),
 ('anna_cook',    'anna@uni.gr',     'cook',     5),
 ('katerina',     'katerina@uni.gr', 'consumer', 10),
-('nikos',        'nikos@uni.gr',    'consumer', 10);
+('nikos',        'nikos@uni.gr',    'consumer', 10),
+('admin',        'admin@uni.gr',    'admin',    0);
 
-INSERT INTO ads (cook_id, title, credit_costs, description, total_portions, available_portions, allergens, pickup_location, pickup_time, created_at) VALUES
-(1, 'Σπιτικό Παστίτσιο',  2, 'Σπιτικό παστίτσιο με κιμά και μπεσαμέλ',       4, 4, 'Γλουτένη, Λακτόζη', 'Εστία Κτίριο Β',         '2026-05-01 14:00:00', NOW() - INTERVAL 2  HOUR),
-(2, 'Σαλάτα Caesar',       1, 'Φρέσκια σαλάτα με κοτόπουλο και κρουτόν',      3, 2, 'Γλουτένη',           'Κτίριο Πληροφορικής',    '2026-05-01 13:30:00', NOW() - INTERVAL 5  HOUR),
-(3, 'Μουσακάς',            3, 'Παραδοσιακός μουσακάς με κιμά',                 5, 0, 'Γάλα',               'Εστία Κτίριο Α',         '2026-04-30 12:30:00', NOW() - INTERVAL 24 HOUR),
-(1, 'Γεμιστά',             2, 'Ντοματωμένα γεμιστά με ρύζι',                   6, 6, 'Καμία',              'Εστία Κτίριο Β',         '2026-05-02 14:00:00', NOW() - INTERVAL 1  HOUR),
-(2, 'Πίτσα Μαργαρίτα',    2, 'Σπιτική πίτσα με ντομάτα και μοτσαρέλα',       2, 2, 'Γλουτένη, Λακτόζη', 'Κτίριο Πληροφορικής',    '2026-05-01 19:00:00', NOW() - INTERVAL 3  HOUR),
-(4, 'Σπανακόπιτα',         1, 'Σπιτική σπανακόπιτα με φέτα',                   8, 5, 'Γλουτένη, Γάλα',    'Βιβλιοθήκη — είσοδος',   '2026-05-01 12:00:00', NOW() - INTERVAL 4  HOUR);
+INSERT INTO ads (cook_id, title, credit_costs, description, total_portions, available_portions, allergens, pickup_location, pickup_time, latitude, longitude, created_at) VALUES
+(1, 'Σπιτικό Παστίτσιο',  2, 'Σπιτικό παστίτσιο με κιμά και μπεσαμέλ',       4, 4, 'Γλουτένη, Λακτόζη', 'Εστία Κτίριο Β',         '2026-05-01 14:00:00', 37.978500, 23.738000, NOW() - INTERVAL 2  HOUR),
+(2, 'Σαλάτα Caesar',       1, 'Φρέσκια σαλάτα με κοτόπουλο και κρουτόν',      3, 2, 'Γλουτένη',           'Κτίριο Πληροφορικής',    '2026-05-01 13:30:00', 37.979500, 23.739500, NOW() - INTERVAL 5  HOUR),
+(3, 'Μουσακάς',            3, 'Παραδοσιακός μουσακάς με κιμά',                 5, 0, 'Γάλα',               'Εστία Κτίριο Α',         '2026-04-30 12:30:00', 37.978000, 23.737000, NOW() - INTERVAL 24 HOUR),
+(1, 'Γεμιστά',             2, 'Ντοματωμένα γεμιστά με ρύζι',                   6, 6, 'Καμία',              'Εστία Κτίριο Β',         '2026-05-02 14:00:00', 37.978500, 23.738000, NOW() - INTERVAL 1  HOUR),
+(2, 'Πίτσα Μαργαρίτα',    2, 'Σπιτική πίτσα με ντομάτα και μοτσαρέλα',       2, 2, 'Γλουτένη, Λακτόζη', 'Κτίριο Πληροφορικής',    '2026-05-01 19:00:00', 37.979500, 23.739500, NOW() - INTERVAL 3  HOUR),
+(4, 'Σπανακόπιτα',         1, 'Σπιτική σπανακόπιτα με φέτα',                   8, 5, 'Γλουτένη, Γάλα',    'Βιβλιοθήκη — είσοδος',   '2026-05-01 12:00:00', 37.979000, 23.738800, NOW() - INTERVAL 4  HOUR);
 
 INSERT INTO requests (ad_id, consumer_id, quantity, status, rating, received_at) VALUES
 (1, 5, 2, 'pending',   NULL, NULL),

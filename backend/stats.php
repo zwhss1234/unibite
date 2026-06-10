@@ -13,10 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $action = $_GET['action'] ?? '';
 
 switch ($action) {
-    case 'leaderboard': getLeaderboard(); break;
-    case 'stats':       getStats();       break;
-    case 'user-stats':  requireAuth(); getUserStats(); break;
-    default:            jsonResponse(['error' => 'Άγνωστη ενέργεια'], 400);
+    case 'leaderboard':   getLeaderboard();                      break;
+    case 'stats':         getStats();                            break;
+    case 'user-stats':    requireAuth(); getUserStats();         break;
+    case 'admin-stats':   requireAuth(); getAdminStats();        break;
+    default:              jsonResponse(['error' => 'Άγνωστη ενέργεια'], 400);
 }
 
 // Top 10 μάγειρες κατά μερίδες που παραδόθηκαν
@@ -61,6 +62,78 @@ function getStats() {
                 'active_ads'       => intval($active['active_ads']),
                 'total_users'      => intval($users['total_users']),
             ],
+        ]);
+    } catch (PDOException $e) {
+        jsonResponse(['error' => 'Σφάλμα βάσης δεδομένων'], 500);
+    }
+}
+
+// Admin dashboard — πρόσβαση μόνο για admin
+function getAdminStats() {
+    global $pdo;
+    if (($_SESSION['role'] ?? '') !== 'admin') {
+        jsonResponse(['error' => 'Απαιτείται πρόσβαση διαχειριστή'], 403);
+    }
+    try {
+        // Δ1: Μερίδες τελευταίου μήνα
+        $portions = $pdo->query("
+            SELECT COALESCE(SUM(r.quantity), 0) AS total
+            FROM requests r
+            WHERE r.status = 'picked_up' AND r.received_at >= NOW() - INTERVAL 1 MONTH
+        ")->fetch();
+
+        // Συνολικοί χρήστες (εκτός admin)
+        $users = $pdo->query("SELECT COUNT(*) AS total FROM users WHERE role != 'admin'")->fetch();
+
+        // Ενεργές αγγελίες τώρα
+        $activeAds = $pdo->query("
+            SELECT COUNT(*) AS total FROM ads
+            WHERE created_at >= NOW() - INTERVAL 48 HOUR AND available_portions > 0
+        ")->fetch();
+
+        // Δ2: Top Donor (μερίδες που δόθηκαν)
+        $topDonor = $pdo->query("
+            SELECT u.username, COALESCE(SUM(r.quantity), 0) AS portions_given
+            FROM users u
+            JOIN ads a ON u.id = a.cook_id
+            JOIN requests r ON a.id = r.ad_id
+            WHERE r.status = 'picked_up'
+            GROUP BY u.id, u.username
+            ORDER BY portions_given DESC
+            LIMIT 1
+        ")->fetch();
+
+        // Δ2: Top 5 γεύματα με υψηλότερη αξιολόγηση
+        $topRated = $pdo->query("
+            SELECT a.title, u.username AS cook_name,
+                   ROUND(AVG(r.rating), 1) AS avg_rating,
+                   COUNT(r.id) AS review_count
+            FROM ads a
+            JOIN users u ON a.cook_id = u.id
+            JOIN requests r ON a.id = r.ad_id
+            WHERE r.rating IS NOT NULL
+            GROUP BY a.id, a.title, u.username
+            ORDER BY avg_rating DESC, review_count DESC
+            LIMIT 5
+        ")->fetchAll();
+
+        // Μηνιαίο ιστορικό (τελευταίοι 6 μήνες)
+        $monthly = $pdo->query("
+            SELECT DATE_FORMAT(received_at, '%Y-%m') AS month,
+                   COALESCE(SUM(quantity), 0)        AS portions
+            FROM requests
+            WHERE status = 'picked_up' AND received_at >= NOW() - INTERVAL 6 MONTH
+            GROUP BY month
+            ORDER BY month ASC
+        ")->fetchAll();
+
+        jsonResponse([
+            'portions_last_month' => intval($portions['total']),
+            'total_users'         => intval($users['total']),
+            'active_ads'          => intval($activeAds['total']),
+            'top_donor'           => $topDonor ?: null,
+            'top_rated_meals'     => $topRated,
+            'monthly_portions'    => $monthly,
         ]);
     } catch (PDOException $e) {
         jsonResponse(['error' => 'Σφάλμα βάσης δεδομένων'], 500);

@@ -64,23 +64,64 @@ function handleDelete() {
     deleteAd();
 }
 
-// Ενεργές αγγελίες των τελευταίων 48 ωρών
+// Ενεργές/ανενεργές αγγελίες των τελευταίων 48 ωρών
 function getActiveAds() {
     global $pdo;
+
+    // Προαιρετικό φίλτρο απόστασης
+    $userLat = isset($_GET['lat']) ? floatval($_GET['lat']) : null;
+    $userLng = isset($_GET['lng']) ? floatval($_GET['lng']) : null;
+    $maxKm   = isset($_GET['km'])  ? floatval($_GET['km'])  : null;
+
     try {
-        $stmt = $pdo->query("
+        $sql = "
             SELECT a.*, u.username AS cook_name,
                 CASE WHEN a.available_portions > 0 THEN 'Active' ELSE 'Inactive' END AS current_state
             FROM ads a
             JOIN users u ON a.cook_id = u.id
             WHERE a.created_at >= NOW() - INTERVAL 48 HOUR
             ORDER BY a.created_at DESC
-        ");
-        $ads = $stmt->fetchAll();
+        ";
+        $ads = $pdo->query($sql)->fetchAll();
+
+        // Εφαρμογή φίλτρου απόστασης (Haversine) αν δόθηκαν συντεταγμένες χρήστη
+        if ($userLat !== null && $userLng !== null) {
+            foreach ($ads as &$ad) {
+                if ($ad['latitude'] && $ad['longitude']) {
+                    $ad['distance_km'] = haversine($userLat, $userLng, floatval($ad['latitude']), floatval($ad['longitude']));
+                } else {
+                    $ad['distance_km'] = null;
+                }
+            }
+            unset($ad);
+
+            // Φιλτράρισμα βάσει max km αν ζητήθηκε
+            if ($maxKm !== null) {
+                $ads = array_filter($ads, fn($a) => $a['distance_km'] === null || $a['distance_km'] <= $maxKm);
+                $ads = array_values($ads);
+            }
+
+            // Ταξινόμηση: με συντεταγμένες πρώτα, κοντινότερες πρώτα
+            usort($ads, function($a, $b) {
+                if ($a['distance_km'] === null && $b['distance_km'] === null) return 0;
+                if ($a['distance_km'] === null) return 1;
+                if ($b['distance_km'] === null) return -1;
+                return $a['distance_km'] <=> $b['distance_km'];
+            });
+        }
+
         jsonResponse(['ads' => $ads, 'count' => count($ads)]);
     } catch (PDOException $e) {
         jsonResponse(['error' => 'Σφάλμα βάσης δεδομένων'], 500);
     }
+}
+
+function haversine($lat1, $lon1, $lat2, $lon2) {
+    $R = 6371;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat/2)*sin($dLat/2) + cos(deg2rad($lat1))*cos(deg2rad($lat2))*sin($dLon/2)*sin($dLon/2);
+    return $R * 2 * atan2(sqrt($a), sqrt(1-$a));
 }
 
 // Αγγελίες του τρέχοντος μάγειρα
@@ -132,6 +173,8 @@ function createAd() {
     $credit_costs = intval($_POST['credit_costs'] ?? 1);
     $description  = trim($_POST['description']   ?? '');
     $allergens    = trim($_POST['allergens']      ?? '');
+    $latitude     = isset($_POST['latitude'])  && $_POST['latitude']  !== '' ? floatval($_POST['latitude'])  : null;
+    $longitude    = isset($_POST['longitude']) && $_POST['longitude'] !== '' ? floatval($_POST['longitude']) : null;
 
     // Upload εικόνας (προαιρετικά)
     $image_path = null;
@@ -167,15 +210,16 @@ function createAd() {
     try {
         $stmt = $pdo->prepare("
             INSERT INTO ads (cook_id, title, credit_costs, description, allergens,
-                             total_portions, available_portions, pickup_location, pickup_time, image_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             total_portions, available_portions, pickup_location, pickup_time,
+                             image_path, latitude, longitude)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $_SESSION['user_id'],
             $title, $credit_costs, $description, $allergens,
             $total_portions, $total_portions,
             $pickup_location, $pickup_time,
-            $image_path,
+            $image_path, $latitude, $longitude,
         ]);
         $adId = $pdo->lastInsertId();
         jsonResponse(['message' => 'Αγγελία δημιουργήθηκε!', 'ad' => ['id' => $adId, 'title' => $title]], 201);

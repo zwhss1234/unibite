@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UniBite - Φοιτητικό Φαγητό</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -102,6 +103,7 @@
         <button class="tab"         data-tab="requests">📋 Αιτήματα</button>
         <button class="tab"         data-tab="leaderboard">🏆 Top</button>
         <button class="tab"         data-tab="profile" id="profile-tab-btn">👤 Προφίλ</button>
+        <button class="tab hidden"  data-tab="admin" id="admin-tab-btn">⚙️ Admin</button>
     </nav>
 
     <main class="main-content">
@@ -112,7 +114,23 @@
                 <h2>Διαθέσιμα Φαγητά</h2>
                 <span class="filter-badge">Ενεργές (48ω)</span>
             </div>
+
+            <!-- Feed controls: view toggle + sort -->
+            <div class="feed-controls">
+                <div class="view-toggle">
+                    <button class="view-btn active" id="list-view-btn">📋 Λίστα</button>
+                    <button class="view-btn" id="map-view-btn">🗺️ Χάρτης</button>
+                </div>
+                <div class="feed-sort">
+                    <select id="sort-select">
+                        <option value="newest">Νεότερες πρώτα</option>
+                        <option value="distance">Κοντινότερες πρώτα</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="ads-grid" id="ads-container"></div>
+            <div id="map-container" class="map-container" style="display:none;"></div>
         </section>
 
         <!-- MY ADS -->
@@ -191,6 +209,56 @@
             </button>
         </section>
 
+        <!-- ADMIN DASHBOARD -->
+        <section id="admin-section" class="tab-content">
+            <div class="section-header">
+                <h2>⚙️ Admin Dashboard</h2>
+            </div>
+
+            <!-- Δ1: Στατιστικά -->
+            <div class="admin-stats-grid" id="admin-stats-grid">
+                <div class="admin-stat-card">
+                    <span class="admin-stat-icon">🍽️</span>
+                    <div>
+                        <div class="admin-stat-value" id="admin-portions">—</div>
+                        <div class="admin-stat-label">Μερίδες τελευταίου μήνα</div>
+                    </div>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="admin-stat-icon">👥</span>
+                    <div>
+                        <div class="admin-stat-value" id="admin-users">—</div>
+                        <div class="admin-stat-label">Συνολικοί χρήστες</div>
+                    </div>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="admin-stat-icon">📢</span>
+                    <div>
+                        <div class="admin-stat-value" id="admin-active-ads">—</div>
+                        <div class="admin-stat-label">Ενεργές αγγελίες τώρα</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Δ2: Top Donor -->
+            <div class="admin-card" id="admin-top-donor-card">
+                <h3 class="admin-card-title">🥇 Top Donor</h3>
+                <div id="admin-top-donor">—</div>
+            </div>
+
+            <!-- Δ2: Top Rated Meals -->
+            <div class="admin-card">
+                <h3 class="admin-card-title">⭐ Γεύματα με Υψηλότερη Αξιολόγηση</h3>
+                <div id="admin-top-rated"></div>
+            </div>
+
+            <!-- Δ1: Μηνιαία πορεία -->
+            <div class="admin-card">
+                <h3 class="admin-card-title">📊 Μηνιαίες Μερίδες (6 μήνες)</h3>
+                <div id="admin-monthly"></div>
+            </div>
+        </section>
+
     </main>
 </div>
 
@@ -263,6 +331,9 @@
             <div class="form-group">
                 <label for="ad-location">Τοποθεσία Παραλαβής</label>
                 <input type="text" id="ad-location" placeholder="π.χ. Εστία Κτίριο Β" required>
+                <button type="button" class="btn btn-secondary btn-sm geo-btn" id="geo-btn">📍 Χρήση τοποθεσίας μου</button>
+                <input type="hidden" id="ad-latitude">
+                <input type="hidden" id="ad-longitude">
             </div>
             <div class="form-group">
                 <label for="ad-pickup-time">Ώρα Παραλαβής</label>
@@ -273,6 +344,7 @@
     </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
