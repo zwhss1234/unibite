@@ -221,7 +221,10 @@ body {
     top: 60px;
     z-index: 99;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
+.nav-tabs::-webkit-scrollbar { display: none; }
 .tab {
     background: none;
     border: none;
@@ -668,7 +671,7 @@ body {
    ============================================================ */
 
 .map-container {
-    height: 420px;
+    height: clamp(260px, 55vw, 420px);
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: var(--shadow);
@@ -964,4 +967,89 @@ body {
 
 @media (min-width: 768px) {
     .ads-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   SMALL SCREENS  ≤ 480px
+   ============================================================ */
+
+@media (max-width: 480px) {
+
+    /* Body */
+    body { padding-bottom: 60px; }
+
+    /* Header */
+    .header { padding: 12px 14px; }
+    .logo h1 { font-size: 1.2rem; }
+    .logo-icon { font-size: 1.5rem; }
+    .credits-badge { padding: 5px 9px; font-size: 0.8rem; gap: 3px; }
+    .profile-avatar-btn { width: 32px; height: 32px; font-size: 0.75rem; }
+
+    /* Nav — header shrinks to ~50px on mobile so adjust sticky offset */
+    .nav-tabs { padding: 6px 6px; top: 50px; }
+    .tab { padding: 8px 10px; font-size: 0.8rem; }
+
+    /* Main content */
+    .main-content { padding: 14px 12px; }
+    .section-header { margin-bottom: 14px; }
+    .section-header h2 { font-size: 1.1rem; }
+
+    /* Login */
+    .login-header { padding: 22px 20px 16px; }
+    .login-header .logo-icon { font-size: 2.2rem; }
+    .login-header h1 { font-size: 1.6rem; }
+    .login-description { padding: 16px 20px 12px; }
+    .login-form-container { padding: 18px 20px 22px; }
+    .features { gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+    /* Food cards */
+    .food-image { height: 100px; font-size: 2.8rem; }
+    .food-img { height: 100px; }
+    .food-content { padding: 12px; }
+    .food-content h3 { font-size: 1rem; }
+
+    /* Request cards — stack on narrow screens */
+    .request-card {
+        flex-wrap: wrap;
+    }
+    .request-actions { width: 100%; justify-content: flex-end; margin-top: 6px; }
+    .rating-section  { width: 100%; text-align: left; margin-top: 4px; }
+
+    /* My-ad cards — stack actions */
+    .my-ad-card { flex-wrap: wrap; }
+    .my-ad-card .btn { margin-top: 8px; }
+
+    /* Form row — stack vertically */
+    .form-row { flex-direction: column; gap: 0; }
+
+    /* Quantity controls — bigger touch targets */
+    .qty-btn { width: 42px; height: 42px; font-size: 1.3rem; }
+    .quantity-controls { gap: 12px; }
+
+    /* Order modal actions */
+    .order-modal-actions { flex-direction: column; }
+    .order-modal-actions .btn { width: 100%; }
+
+    /* Leaderboard */
+    .top-donor { flex-direction: column; text-align: center; gap: 10px; }
+    .trophy { font-size: 2.2rem; }
+
+    /* Admin stats — force single column on very small screens */
+    .admin-stats-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Toast — avoid being clipped */
+    .toast { font-size: 0.82rem; padding: 12px 16px; white-space: normal; width: 90vw; }
+
+    /* Modal */
+    .modal-content { padding: 18px 16px; }
+}
+
+/* ============================================================
+   EXTRA SMALL  ≤ 360px
+   ============================================================ */
+
+@media (max-width: 360px) {
+    .admin-stats-grid { grid-template-columns: 1fr; }
+    .tab { padding: 7px 8px; font-size: 0.75rem; }
+    .credits-badge { display: none; }  /* hide on very tiny screens to save space */
 }
