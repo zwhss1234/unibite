@@ -16,6 +16,7 @@
 
 ### Για Μάγειρες 🍳
 - Δημοσίευση αγγελίας με τίτλο, περιγραφή, μερίδες, κόστος credits, αλλεργιογόνα, τοποθεσία & ώρα παραλαβής
+- Καταγραφή GPS τοποθεσίας με κουμπί "📍 Χρήση τοποθεσίας μου"
 - Αποδοχή ή άρνηση εισερχόμενων παραγγελιών
 - Αυτόματη πληρωμή σε credits μόλις ο καταναλωτής βαθμολογήσει
 - **Bonus credit** για βαθμολογία > 3 αστέρια
@@ -23,15 +24,26 @@
 
 ### Για Καταναλωτές 🍽️
 - Feed με όλα τα διαθέσιμα φαγητά (τελευταίες 48 ώρες)
+- **Χάρτης** (Leaflet/OpenStreetMap) με markers για κάθε αγγελία
+- **Ταξινόμηση κατά απόσταση** — "Κοντινότερες πρώτα" (χρειάζεται GPS permission)
+- Ανενεργές αγγελίες εμφανίζονται greyscale (αναγνωρίσιμες αλλά ξεχωριστές)
 - Επιλογή αριθμού μερίδων με live υπολογισμό κόστους
 - Real-time κατάσταση παραγγελίας (Αναμένει / Εγκρίθηκε / Ολοκληρώθηκε)
 - Βαθμολογία 1-5 αστέρων μετά την παραλαβή
 - Αυτόματη επιστροφή credits σε περίπτωση άρνησης
 
+### Για Διαχειριστές ⚙️
+- Κρυφό tab "Admin" — εμφανίζεται μόνο στον λογαριασμό `admin@uni.gr`
+- Στατιστικά: μερίδες τελευταίου μήνα, συνολικοί χρήστες, ενεργές αγγελίες
+- Top Donor (μάγειρας με τις περισσότερες μερίδες)
+- Top 5 γεύματα κατά αξιολόγηση
+- Μηνιαίο bar chart (τελευταίοι 6 μήνες)
+
 ### Γενικά
 - Εγγραφή με **5 δωρεάν credits**
 - Σύνδεση μόνο με email — χωρίς password
 - **Leaderboard** με τους top μάγειρες
+- Φωτογραφία προφίλ — upload avatar με click στο profile section
 - Toast notifications (χωρίς browser alerts)
 - Αυτόματη λήξη αγγελιών μετά από 48 ώρες
 
@@ -42,6 +54,7 @@
 | Επίπεδο | Τεχνολογία |
 |---|---|
 | Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Χάρτης | Leaflet.js + OpenStreetMap (χωρίς API key) |
 | Web Server | Apache 2.4 (μέσω XAMPP) |
 | Backend | PHP 8.x |
 | Database Driver | PDO |
@@ -78,10 +91,10 @@ C:\xampp\htdocs\Unibite\
 
 ```
 chcp 65001
-C:\xampp\mysql\bin\mysql.exe -u root -P 3306 -h 127.0.0.1 < "C:\xampp\htdocs\Unibite\backend\unibite.sql"
+C:\xampp\mysql\bin\mysql.exe -u root -P 3307 -h 127.0.0.1 < "C:\xampp\htdocs\Unibite\backend\unibite.sql"
 ```
 
-> Αν το MySQL τρέχει σε πόρτα 3307, άλλαξε `-P 3306` σε `-P 3307` και ενημέρωσε το `backend/config.php` αντίστοιχα.
+> Το project χρησιμοποιεί πόρτα **3307** (XAMPP MariaDB). Αν το δικό σου XAMPP τρέχει στην 3306, άλλαξε `-P 3307` σε `-P 3306` **και** ενημέρωσε το `backend/config.php`.
 
 **5. Άνοιγμα εφαρμογής**
 
@@ -107,6 +120,7 @@ http://localhost/Unibite/frontend/
 | `anna@uni.gr` | Μάγειρας |
 | `katerina@uni.gr` | Καταναλωτής |
 | `nikos@uni.gr` | Καταναλωτής |
+| `admin@uni.gr` | Διαχειριστής |
 
 ---
 
@@ -116,17 +130,18 @@ http://localhost/Unibite/frontend/
 Unibite/
 ├── frontend/
 │   ├── index.html        ← SPA: login + εφαρμογή σε ένα αρχείο
-│   ├── style.css         ← CSS variables, components, modals, toasts
+│   ├── style.css         ← CSS variables, components, modals, toasts, map, admin
 │   └── script.js         ← Όλη η frontend λογική
 ├── backend/
 │   ├── config.php        ← DB connection + helper functions
-│   ├── auth.php          ← register / login / logout / me
-│   ├── ads.php           ← feed / my-ads / create / update / delete
+│   ├── auth.php          ← register / login / logout / me / upload-avatar
+│   ├── ads.php           ← feed / my-ads / create / update / delete (+ GPS coords)
 │   ├── requests.php      ← create / approve / reject / rate / history
-│   ├── stats.php         ← leaderboard / stats / user-stats
+│   ├── stats.php         ← leaderboard / stats / user-stats / admin-stats
 │   └── unibite.sql       ← Schema + indexes + views + procedures + seed data
 ├── refresh.bat           ← Quick database reset
 ├── README.md
+├── ΧΡΗΣΤΕΣ.md            ← Έτοιμοι λογαριασμοί για δοκιμή
 ├── ΕΓΚΑΤΑΣΤΑΣΗ.md        ← Αναλυτικές οδηγίες εγκατάστασης
 └── ΑΝΑΛΥΣΗ_PROJECT.md    ← Πλήρης τεχνική ανάλυση
 ```
@@ -145,15 +160,16 @@ Unibite/
 | POST | `login` | Σύνδεση με email | — |
 | POST | `logout` | Αποσύνδεση | — |
 | GET  | `me` | Τρέχων χρήστης (fresh από DB) | ✓ |
+| POST | `upload-avatar` | Ανέβασμα φωτογραφίας προφίλ (max 2MB) | ✓ |
 
 ### Ads — `backend/ads.php`
 
 | Method | ?action= | Περιγραφή | Auth |
 |---|---|---|---|
-| GET | `feed` | Ενεργές αγγελίες (48ω) | — |
+| GET | `feed` | Ενεργές αγγελίες (48ω) — υποστηρίζει `?lat=&lng=&km=` για φιλτράρισμα απόστασης | — |
 | GET | `my-ads` | Αγγελίες του χρήστη | ✓ |
 | GET | `view&id=X` | Μια αγγελία | — |
-| POST | `create` | Νέα αγγελία | ✓ |
+| POST | `create` | Νέα αγγελία (+ latitude/longitude) | ✓ |
 | PUT | — | Ενημέρωση αγγελίας | ✓ |
 | DELETE | `?id=X` | Διαγραφή αγγελίας | ✓ |
 
@@ -172,11 +188,12 @@ Unibite/
 
 ### Stats — `backend/stats.php`
 
-| Method | ?action= | Περιγραφή |
-|---|---|---|
-| GET | `leaderboard` | Top 10 μάγειρες |
-| GET | `stats` | Γενικά στατιστικά |
-| GET | `user-stats` | Στατιστικά χρήστη |
+| Method | ?action= | Περιγραφή | Auth |
+|---|---|---|---|
+| GET | `leaderboard` | Top 10 μάγειρες | — |
+| GET | `stats` | Γενικά στατιστικά | — |
+| GET | `user-stats` | Στατιστικά χρήστη | ✓ |
+| GET | `admin-stats` | Admin dashboard data | ✓ (admin only) |
 
 ---
 
@@ -226,12 +243,12 @@ status: picked_up
 ## Βάση Δεδομένων
 
 ### Πίνακες
-- **`users`** — χρήστες, ρόλοι, credits
-- **`ads`** — αγγελίες φαγητού
+- **`users`** — χρήστες, ρόλοι, credits, avatar_path
+- **`ads`** — αγγελίες φαγητού (+ latitude/longitude για χάρτη)
 - **`requests`** — παραγγελίες με status lifecycle
 
 ### Views
-- **`active_ads`** — αγγελίες < 48ω με cook_name
+- **`active_ads`** — αγγελίες < 48ω με cook_name και current_state (Active/Inactive)
 - **`leaderboard`** — μάγειρες κατά πλήθος picked_up
 
 ### Stored Procedures
@@ -255,5 +272,6 @@ C:\xampp\htdocs\Unibite\refresh.bat
 
 | Αρχείο | Περιεχόμενο |
 |---|---|
+| [ΧΡΗΣΤΕΣ.md](ΧΡΗΣΤΕΣ.md) | Έτοιμοι λογαριασμοί για δοκιμή + νέες λειτουργίες |
 | [ΕΓΚΑΤΑΣΤΑΣΗ.md](ΕΓΚΑΤΑΣΤΑΣΗ.md) | Αναλυτικές οδηγίες εγκατάστασης & αντιμετώπιση προβλημάτων |
 | [ΑΝΑΛΥΣΗ_PROJECT.md](ΑΝΑΛΥΣΗ_PROJECT.md) | Πλήρης τεχνική ανάλυση — DB schema, API, frontend, credits |
